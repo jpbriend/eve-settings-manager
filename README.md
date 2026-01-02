@@ -66,8 +66,8 @@ esm list
 Example output:
 ```
 CHARACTER ID    NAME              MODIFIED
-2119711681      Mudak FendLaBise  2024-01-15 14:30:00
-95465499        Samia FendLaBise  2024-01-14 09:15:00
+123456789       John Capsuleer    2024-01-15 14:30:00
+987654321       Jane Miner        2024-01-14 09:15:00
 
 Found 2 character(s)
 ```
@@ -83,8 +83,8 @@ Before making any changes, create a backup:
 esm backup --all
 
 # Or backup a specific character (by name or ID)
-esm backup "Mudak FendLaBise"
-esm backup 2119711681
+esm backup "John Capsuleer"
+esm backup 123456789
 
 # Save to a specific file
 esm backup --all -o my-eve-backup.zip
@@ -98,10 +98,10 @@ Copy settings from one character to another:
 
 ```bash
 # Using character names
-esm copy --from "Mudak FendLaBise" --to "Samia FendLaBise"
+esm copy --from "John Capsuleer" --to "Jane Miner"
 
 # Using character IDs
-esm copy --from 2119711681 --to 95465499
+esm copy --from 123456789 --to 987654321
 ```
 
 The tool will:
@@ -113,7 +113,7 @@ The tool will:
 Use `--force` to skip the confirmation prompt:
 
 ```bash
-esm copy --from "Mudak FendLaBise" --to "Samia FendLaBise" --force
+esm copy --from "John Capsuleer" --to "Jane Miner" --force
 ```
 
 ### Step 4: Restore Settings (If Needed)
@@ -125,7 +125,7 @@ Restore settings from a backup:
 esm restore my-eve-backup.zip
 
 # Restore only a specific character
-esm restore my-eve-backup.zip -c "Mudak FendLaBise"
+esm restore my-eve-backup.zip -c "John Capsuleer"
 
 # Skip confirmation prompt
 esm restore my-eve-backup.zip --force
