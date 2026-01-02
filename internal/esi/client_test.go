@@ -128,4 +128,52 @@ func TestNewClient(t *testing.T) {
 	if client.cache == nil {
 		t.Error("cache is nil")
 	}
+
+	if client.nameCache == nil {
+		t.Error("nameCache is nil")
+	}
+}
+
+func TestResolveCharacter(t *testing.T) {
+	client := NewClient()
+
+	t.Run("numeric ID", func(t *testing.T) {
+		id, err := client.ResolveCharacter("12345678")
+		if err != nil {
+			t.Fatalf("ResolveCharacter failed: %v", err)
+		}
+		if id != 12345678 {
+			t.Errorf("expected 12345678, got %d", id)
+		}
+	})
+
+	t.Run("zero is invalid", func(t *testing.T) {
+		_, err := client.ResolveCharacter("0")
+		if err == nil {
+			t.Error("expected error for zero ID")
+		}
+	})
+
+	t.Run("negative is invalid", func(t *testing.T) {
+		_, err := client.ResolveCharacter("-123")
+		if err == nil {
+			t.Error("expected error for negative ID")
+		}
+	})
+}
+
+func TestSearchCharacterByName_Cache(t *testing.T) {
+	client := NewClient()
+
+	// Pre-populate name cache
+	client.nameCache["CCP Falcon"] = 92532650
+
+	id, err := client.SearchCharacterByName("CCP Falcon")
+	if err != nil {
+		t.Fatalf("SearchCharacterByName failed: %v", err)
+	}
+
+	if id != 92532650 {
+		t.Errorf("expected 92532650, got %d", id)
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 )
@@ -24,10 +25,16 @@ type CharacterInfo struct {
 	BloodlineID   int    `json:"bloodline_id"`
 }
 
+// SearchResult represents the response from ESI search endpoint.
+type SearchResult struct {
+	Character []int64 `json:"character"`
+}
+
 // Client is an ESI API client with caching.
 type Client struct {
 	httpClient *http.Client
 	cache      map[int64]*CharacterInfo
+	nameCache  map[string]int64 // name -> character ID cache
 	cacheMu    sync.RWMutex
 }
 
@@ -37,7 +44,8 @@ func NewClient() *Client {
 		httpClient: &http.Client{
 			Timeout: requestTimeout,
 		},
-		cache: make(map[int64]*CharacterInfo),
+		cache:     make(map[int64]*CharacterInfo),
+		nameCache: make(map[string]int64),
 	}
 }
 
@@ -125,4 +133,63 @@ func (c *Client) BatchGetCharacterNames(characterIDs []int64) map[int64]string {
 
 	wg.Wait()
 	return results
+}
+
+// SearchCharacterByName searches for a character by exact name and returns their ID.
+func (c *Client) SearchCharacterByName(name string) (int64, error) {
+	// Check name cache first
+	c.cacheMu.RLock()
+	if id, ok := c.nameCache[name]; ok {
+		c.cacheMu.RUnlock()
+		return id, nil
+	}
+	c.cacheMu.RUnlock()
+
+	// Search via ESI API (strict=true for exact match)
+	searchURL := fmt.Sprintf("%s/search/?categories=character&search=%s&strict=true",
+		baseURL, url.QueryEscape(name))
+
+	resp, err := c.httpClient.Get(searchURL)
+	if err != nil {
+		return 0, fmt.Errorf("failed to search for character '%s': %w", name, err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("ESI search returned status %d for '%s'", resp.StatusCode, name)
+	}
+
+	var result SearchResult
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, fmt.Errorf("failed to decode search result: %w", err)
+	}
+
+	if len(result.Character) == 0 {
+		return 0, fmt.Errorf("character '%s' not found", name)
+	}
+
+	charID := result.Character[0]
+
+	// Cache the result
+	c.cacheMu.Lock()
+	c.nameCache[name] = charID
+	c.cacheMu.Unlock()
+
+	return charID, nil
+}
+
+// ResolveCharacter resolves a character identifier (ID or name) to a character ID.
+// If the input is numeric, it's treated as an ID. Otherwise, it's searched by name.
+func (c *Client) ResolveCharacter(identifier string) (int64, error) {
+	// Try to parse as ID first
+	var id int64
+	_, err := fmt.Sscanf(identifier, "%d", &id)
+	if err == nil && id > 0 {
+		return id, nil
+	}
+
+	// Not a number, search by name
+	return c.SearchCharacterByName(identifier)
 }

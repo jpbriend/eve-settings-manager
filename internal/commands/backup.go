@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/jpbriend/eve-settings-manager/internal/backup"
@@ -52,17 +51,19 @@ func runBackup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no character settings files found")
 	}
 
+	// ESI client for name resolution
+	esiClient := esi.NewClient()
+
 	// Determine which characters to backup
 	var charactersToBackup []eve.CharacterSettings
 
 	if backupAll {
 		charactersToBackup = allCharacters
 	} else if len(args) > 0 {
-		// Find specific character by ID or name
-		charID, err := strconv.ParseInt(args[0], 10, 64)
+		// Resolve character by ID or name
+		charID, err := esiClient.ResolveCharacter(args[0])
 		if err != nil {
-			// Try to find by name
-			return fmt.Errorf("character lookup by name not yet implemented, please use character ID")
+			return fmt.Errorf("failed to resolve character '%s': %w", args[0], err)
 		}
 
 		for _, c := range allCharacters {
@@ -73,14 +74,13 @@ func runBackup(cmd *cobra.Command, args []string) error {
 		}
 
 		if len(charactersToBackup) == 0 {
-			return fmt.Errorf("character %d not found in local settings", charID)
+			return fmt.Errorf("character '%s' (ID: %d) not found in local settings", args[0], charID)
 		}
 	} else {
-		return fmt.Errorf("please specify a character ID or use --all to backup all characters")
+		return fmt.Errorf("please specify a character (ID or name) or use --all to backup all characters")
 	}
 
 	// Fetch character names
-	esiClient := esi.NewClient()
 	charIDs := make([]int64, len(charactersToBackup))
 	for i, c := range charactersToBackup {
 		charIDs[i] = c.CharacterID

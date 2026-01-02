@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -40,15 +39,18 @@ func init() {
 }
 
 func runCopy(cmd *cobra.Command, args []string) error {
-	// Parse character IDs
-	fromID, err := strconv.ParseInt(copyFrom, 10, 64)
+	// ESI client for name resolution
+	esiClient := esi.NewClient()
+
+	// Resolve character IDs (supports both ID and name)
+	fromID, err := esiClient.ResolveCharacter(copyFrom)
 	if err != nil {
-		return fmt.Errorf("invalid source character ID: %s (name lookup not yet implemented)", copyFrom)
+		return fmt.Errorf("failed to resolve source character '%s': %w", copyFrom, err)
 	}
 
-	toID, err := strconv.ParseInt(copyTo, 10, 64)
+	toID, err := esiClient.ResolveCharacter(copyTo)
 	if err != nil {
-		return fmt.Errorf("invalid target character ID: %s (name lookup not yet implemented)", copyTo)
+		return fmt.Errorf("failed to resolve target character '%s': %w", copyTo, err)
 	}
 
 	// Detect settings directories
@@ -90,7 +92,6 @@ func runCopy(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get character names for display
-	esiClient := esi.NewClient()
 	sourceName := esiClient.GetCharacterNameOrFallback(fromID)
 	targetName := esiClient.GetCharacterNameOrFallback(toID)
 
