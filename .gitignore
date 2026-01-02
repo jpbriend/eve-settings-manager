@@ -4,6 +4,7 @@ PLAN.md
 
 # Binaries
 build/
+dist/
 *.exe
 *.exe~
 *.dll

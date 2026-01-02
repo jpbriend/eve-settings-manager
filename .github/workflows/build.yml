@@ -29,16 +29,6 @@ jobs:
   build:
     needs: test
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - goos: linux
-            goarch: amd64
-            suffix: ''
-          - goos: windows
-            goarch: amd64
-            suffix: '.exe'
-
     steps:
       - uses: actions/checkout@v4
 
@@ -47,41 +37,39 @@ jobs:
         with:
           go-version: '1.21'
 
-      - name: Build
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-        run: |
-          go build -ldflags "-s -w" -o esm-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} ./cmd/esm
+      - name: Build snapshot
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: build --snapshot --clean
 
-      - name: Upload artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: esm-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: esm-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
+          name: binaries
+          path: dist/*
 
   release:
-    needs: build
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      - name: Download Linux artifact
-        uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
         with:
-          name: esm-linux-amd64
+          fetch-depth: 0
 
-      - name: Download Windows artifact
-        uses: actions/download-artifact@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          name: esm-windows-amd64
+          go-version: '1.21'
 
-      - name: Upload release assets
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v1
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
         with:
-          files: |
-            esm-linux-amd64
-            esm-windows-amd64.exe
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
