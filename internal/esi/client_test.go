@@ -12,7 +12,7 @@ func TestGetCharacter(t *testing.T) {
 		if r.URL.Path == "/characters/12345/" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{
+			_, _ = w.Write([]byte(`{
 				"name": "Test Character",
 				"corporation_id": 98000001,
 				"birthday": "2020-01-01T00:00:00Z",

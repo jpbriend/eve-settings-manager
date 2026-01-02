@@ -1,4 +1,4 @@
-.PHONY: build build-all clean test install
+.PHONY: build build-all clean test install lint fmt deps check
 
 BINARY_NAME=esm
 VERSION?=0.1.0
@@ -55,7 +55,10 @@ fmt:
 
 # Run linter
 lint:
-	golangci-lint run
+	golangci-lint run ./...
+
+# Run all checks (lint + test)
+check: lint test
 
 # Build and run
 run: build

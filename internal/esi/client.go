@@ -57,7 +57,9 @@ func (c *Client) GetCharacter(characterID int64) (*CharacterInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch character %d: %w", characterID, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, fmt.Errorf("character %d not found", characterID)

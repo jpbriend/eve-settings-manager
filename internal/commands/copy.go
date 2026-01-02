@@ -35,8 +35,8 @@ func init() {
 	copyCmd.Flags().StringVar(&copyFrom, "from", "", "Source character (ID or name)")
 	copyCmd.Flags().StringVar(&copyTo, "to", "", "Target character (ID or name)")
 	copyCmd.Flags().BoolVarP(&copyForce, "force", "f", false, "Overwrite without confirmation")
-	copyCmd.MarkFlagRequired("from")
-	copyCmd.MarkFlagRequired("to")
+	_ = copyCmd.MarkFlagRequired("from")
+	_ = copyCmd.MarkFlagRequired("to")
 }
 
 func runCopy(cmd *cobra.Command, args []string) error {

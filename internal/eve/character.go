@@ -32,7 +32,7 @@ func (cs *CharacterSettings) GetSettingsDir() string {
 }
 
 // copyFile copies a file from src to dst.
-func copyFile(src, dst string) error {
+func copyFile(src, dst string) (err error) {
 	// Ensure destination directory exists
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 		return err
@@ -42,13 +42,21 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer srcFile.Close()
+	defer func() {
+		if cerr := srcFile.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	dstFile, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer dstFile.Close()
+	defer func() {
+		if cerr := dstFile.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	_, err = io.Copy(dstFile, srcFile)
 	return err

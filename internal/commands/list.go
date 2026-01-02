@@ -73,9 +73,9 @@ func runList(cmd *cobra.Command, args []string) error {
 	// Display results
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	if listVerbose {
-		fmt.Fprintln(w, "CHARACTER ID\tNAME\tMODIFIED\tPATH")
+		_, _ = fmt.Fprintln(w, "CHARACTER ID\tNAME\tMODIFIED\tPATH")
 	} else {
-		fmt.Fprintln(w, "CHARACTER ID\tNAME\tMODIFIED")
+		_, _ = fmt.Fprintln(w, "CHARACTER ID\tNAME\tMODIFIED")
 	}
 
 	for _, c := range characters {
@@ -83,12 +83,12 @@ func runList(cmd *cobra.Command, args []string) error {
 		modTime := time.Unix(c.ModTime, 0).Format("2006-01-02 15:04:05")
 
 		if listVerbose {
-			fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", c.CharacterID, name, modTime, c.FilePath)
+			_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", c.CharacterID, name, modTime, c.FilePath)
 		} else {
-			fmt.Fprintf(w, "%d\t%s\t%s\n", c.CharacterID, name, modTime)
+			_, _ = fmt.Fprintf(w, "%d\t%s\t%s\n", c.CharacterID, name, modTime)
 		}
 	}
-	w.Flush()
+	_ = w.Flush()
 
 	fmt.Printf("\nFound %d character(s)\n", len(characters))
 	return nil

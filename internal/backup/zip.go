@@ -29,15 +29,23 @@ const metadataFileName = "metadata.json"
 const backupVersion = "1.0"
 
 // CreateBackup creates a ZIP backup containing the specified character files.
-func CreateBackup(outputPath string, characters []CharacterBackup, files map[int64]string) error {
+func CreateBackup(outputPath string, characters []CharacterBackup, files map[int64]string) (err error) {
 	zipFile, err := os.Create(outputPath)
 	if err != nil {
 		return fmt.Errorf("failed to create backup file: %w", err)
 	}
-	defer zipFile.Close()
+	defer func() {
+		if cerr := zipFile.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	zipWriter := zip.NewWriter(zipFile)
-	defer zipWriter.Close()
+	defer func() {
+		if cerr := zipWriter.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	// Create metadata
 	metadata := Metadata{
@@ -72,7 +80,9 @@ func ReadBackup(backupPath string) (*Metadata, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open backup file: %w", err)
 	}
-	defer zipReader.Close()
+	defer func() {
+		_ = zipReader.Close()
+	}()
 
 	// Find and read metadata
 	for _, file := range zipReader.File {
@@ -81,11 +91,16 @@ func ReadBackup(backupPath string) (*Metadata, error) {
 			if err != nil {
 				return nil, fmt.Errorf("failed to read metadata: %w", err)
 			}
-			defer rc.Close()
 
 			var metadata Metadata
-			if err := json.NewDecoder(rc).Decode(&metadata); err != nil {
-				return nil, fmt.Errorf("failed to parse metadata: %w", err)
+			decodeErr := json.NewDecoder(rc).Decode(&metadata)
+			closeErr := rc.Close()
+
+			if decodeErr != nil {
+				return nil, fmt.Errorf("failed to parse metadata: %w", decodeErr)
+			}
+			if closeErr != nil {
+				return nil, fmt.Errorf("failed to close metadata reader: %w", closeErr)
 			}
 			return &metadata, nil
 		}
@@ -100,7 +115,9 @@ func ExtractCharacter(backupPath string, charID int64, destPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open backup file: %w", err)
 	}
-	defer zipReader.Close()
+	defer func() {
+		_ = zipReader.Close()
+	}()
 
 	fileName := fmt.Sprintf("core_char_%d.dat", charID)
 	for _, file := range zipReader.File {
@@ -118,7 +135,9 @@ func ExtractAll(backupPath, destDir string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open backup file: %w", err)
 	}
-	defer zipReader.Close()
+	defer func() {
+		_ = zipReader.Close()
+	}()
 
 	for _, file := range zipReader.File {
 		if file.Name == metadataFileName {
@@ -133,12 +152,16 @@ func ExtractAll(backupPath, destDir string) error {
 	return nil
 }
 
-func addFileToZip(zipWriter *zip.Writer, srcPath, destName string) error {
+func addFileToZip(zipWriter *zip.Writer, srcPath, destName string) (err error) {
 	srcFile, err := os.Open(srcPath)
 	if err != nil {
 		return err
 	}
-	defer srcFile.Close()
+	defer func() {
+		if cerr := srcFile.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	info, err := srcFile.Stat()
 	if err != nil {
@@ -161,7 +184,7 @@ func addFileToZip(zipWriter *zip.Writer, srcPath, destName string) error {
 	return err
 }
 
-func extractFile(file *zip.File, destPath string) error {
+func extractFile(file *zip.File, destPath string) (err error) {
 	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
 		return err
 	}
@@ -170,13 +193,21 @@ func extractFile(file *zip.File, destPath string) error {
 	if err != nil {
 		return err
 	}
-	defer rc.Close()
+	defer func() {
+		if cerr := rc.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	destFile, err := os.Create(destPath)
 	if err != nil {
 		return err
 	}
-	defer destFile.Close()
+	defer func() {
+		if cerr := destFile.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	_, err = io.Copy(destFile, rc)
 	return err
