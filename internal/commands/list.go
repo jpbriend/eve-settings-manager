@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"os"
+	"sort"
 	"text/tabwriter"
 	"time"
 
@@ -10,6 +11,12 @@ import (
 	"github.com/jpbriend/eve-settings-manager/internal/eve"
 	"github.com/spf13/cobra"
 )
+
+// characterWithName combines character settings with resolved name for sorting.
+type characterWithName struct {
+	eve.CharacterSettings
+	Name string
+}
 
 var listVerbose bool
 
@@ -70,6 +77,23 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 	names := client.BatchGetCharacterNames(charIDs)
 
+	// Combine characters with names for sorting
+	charsWithNames := make([]characterWithName, len(characters))
+	for i, c := range characters {
+		charsWithNames[i] = characterWithName{
+			CharacterSettings: c,
+			Name:              names[c.CharacterID],
+		}
+	}
+
+	// Sort by Modified desc, then Name asc
+	sort.Slice(charsWithNames, func(i, j int) bool {
+		if charsWithNames[i].ModTime != charsWithNames[j].ModTime {
+			return charsWithNames[i].ModTime > charsWithNames[j].ModTime // desc
+		}
+		return charsWithNames[i].Name < charsWithNames[j].Name // asc
+	})
+
 	// Display results
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	if listVerbose {
@@ -78,14 +102,13 @@ func runList(cmd *cobra.Command, args []string) error {
 		_, _ = fmt.Fprintln(w, "CHARACTER ID\tNAME\tMODIFIED")
 	}
 
-	for _, c := range characters {
-		name := names[c.CharacterID]
+	for _, c := range charsWithNames {
 		modTime := time.Unix(c.ModTime, 0).Format("2006-01-02 15:04:05")
 
 		if listVerbose {
-			_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", c.CharacterID, name, modTime, c.FilePath)
+			_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", c.CharacterID, c.Name, modTime, c.FilePath)
 		} else {
-			_, _ = fmt.Fprintf(w, "%d\t%s\t%s\n", c.CharacterID, name, modTime)
+			_, _ = fmt.Fprintf(w, "%d\t%s\t%s\n", c.CharacterID, c.Name, modTime)
 		}
 	}
 	_ = w.Flush()
