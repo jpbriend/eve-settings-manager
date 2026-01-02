@@ -219,12 +219,12 @@ make build
 ```
 
 Requirements:
-- Go 1.21 or later
+- Go 1.25 or later
 - Make
 
 ## License
 
-MIT License - feel free to use, modify, and distribute this tool.
+[PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0) - free for personal and non-commercial use. Commercial use requires permission.
 
 ## Contributing
 
