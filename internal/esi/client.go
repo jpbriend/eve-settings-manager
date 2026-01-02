@@ -1,10 +1,10 @@
 package esi
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"sync"
 	"time"
 )
@@ -25,9 +25,12 @@ type CharacterInfo struct {
 	BloodlineID   int    `json:"bloodline_id"`
 }
 
-// SearchResult represents the response from ESI search endpoint.
-type SearchResult struct {
-	Character []int64 `json:"character"`
+// UniverseIDsResult represents the response from ESI universe/ids endpoint.
+type UniverseIDsResult struct {
+	Characters []struct {
+		ID   int64  `json:"id"`
+		Name string `json:"name"`
+	} `json:"characters"`
 }
 
 // Client is an ESI API client with caching.
@@ -145,11 +148,17 @@ func (c *Client) SearchCharacterByName(name string) (int64, error) {
 	}
 	c.cacheMu.RUnlock()
 
-	// Search via ESI API (strict=true for exact match)
-	searchURL := fmt.Sprintf("%s/search/?categories=character&search=%s&strict=true",
-		baseURL, url.QueryEscape(name))
+	// Use POST /universe/ids/ to resolve name to ID
+	requestBody, err := json.Marshal([]string{name})
+	if err != nil {
+		return 0, fmt.Errorf("failed to marshal request: %w", err)
+	}
 
-	resp, err := c.httpClient.Get(searchURL)
+	resp, err := c.httpClient.Post(
+		baseURL+"/universe/ids/",
+		"application/json",
+		bytes.NewReader(requestBody),
+	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to search for character '%s': %w", name, err)
 	}
@@ -158,19 +167,19 @@ func (c *Client) SearchCharacterByName(name string) (int64, error) {
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("ESI search returned status %d for '%s'", resp.StatusCode, name)
+		return 0, fmt.Errorf("ESI universe/ids returned status %d for '%s'", resp.StatusCode, name)
 	}
 
-	var result SearchResult
+	var result UniverseIDsResult
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return 0, fmt.Errorf("failed to decode search result: %w", err)
 	}
 
-	if len(result.Character) == 0 {
+	if len(result.Characters) == 0 {
 		return 0, fmt.Errorf("character '%s' not found", name)
 	}
 
-	charID := result.Character[0]
+	charID := result.Characters[0].ID
 
 	// Cache the result
 	c.cacheMu.Lock()
