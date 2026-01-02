@@ -31,9 +31,9 @@ build-linux:
 build-windows:
 	GOOS=windows GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe ./cmd/esm
 
-# Run tests
+# Run tests with race detector
 test:
-	$(GOTEST) -v ./...
+	$(GOTEST) -race -v ./...
 
 # Clean build artifacts
 clean:
